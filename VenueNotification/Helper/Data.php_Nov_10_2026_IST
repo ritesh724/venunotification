@@ -1,0 +1,264 @@
+<?php
+
+namespace Ueg\VenueNotification\Helper;
+
+use Magento\Framework\App\Helper\AbstractHelper;
+use Ueg\ApiBase\Model\ResourceModel\Venue\CollectionFactory;
+use Ueg\ApiBase\Model\VenueFactory;
+use Magento\Catalog\Model\ProductFactory;
+use Magento\Framework\App\Helper\Context;
+use Magento\Framework\App\ResourceConnection;
+use Ueg\VenueNotification\Model\ResourceModel\CheapestWholeseller\CollectionFactory as CheapestCollectionFactory;
+use Ueg\VenueNotification\Model\CheapestWholesellerFactory;
+
+class Data extends AbstractHelper
+{
+    /**
+     * @var CollectionFactory
+     */
+    protected $venueCollectionFactory;
+
+    /**
+     * @var VenueFactory
+     */
+    protected $venueFactory;
+
+    /**
+     * @var ProductFactory
+     */
+    protected $productFactory;
+
+    /**
+     * @var ResourceConnection
+     */
+    protected $resourceConnection;
+
+    /**
+     * @var CheapestCollectionFactory
+     */
+    protected $cheapestCollectionFactory;
+
+    /**
+     * @var CheapestWholesellerFactory
+     */
+    protected $cheapestWholesellerFactory;
+
+    /**
+     * Constructor
+     *
+     * @param Context $context
+     * @param CollectionFactory $venueCollectionFactory
+     * @param VenueFactory $venueFactory
+     * @param ProductFactory $productFactory
+     * @param ResourceConnection $resourceConnection
+     * @param CheapestCollectionFactory $cheapestCollectionFactory
+     * @param CheapestWholesellerFactory $cheapestWholesellerFactory
+     */
+    public function __construct(
+        Context $context,
+        CollectionFactory $venueCollectionFactory,
+        VenueFactory $venueFactory,
+        ProductFactory $productFactory,
+        ResourceConnection $resourceConnection,
+        CheapestCollectionFactory $cheapestCollectionFactory,
+        CheapestWholesellerFactory $cheapestWholesellerFactory
+    ) {
+        $this->venueCollectionFactory = $venueCollectionFactory;
+        $this->venueFactory = $venueFactory;
+        $this->productFactory = $productFactory;
+        $this->resourceConnection = $resourceConnection;
+        $this->cheapestCollectionFactory = $cheapestCollectionFactory;
+        $this->cheapestWholesellerFactory = $cheapestWholesellerFactory;
+        parent::__construct($context);
+    }
+
+    /**
+     * Get module configuration value.
+     *
+     * @param string $field
+     * @param int|null $storeId
+     * @return mixed
+     */
+    public function getConfigValue($field, $storeId = null)
+    {
+        return $this->scopeConfig->getValue(
+            $field,
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+    }
+
+    /**
+     * Get Dynamic Row Value
+     */
+    public function getConfigValueDynamicRow()
+    { 
+        $data = $this->scopeConfig->getValue( 
+            'apibase/general/dynamic_field', 
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE, 
+        );
+        $data = json_decode($data, true);
+        foreach ($data as $key) {
+            $newData[$key['venue']] = $key['trader'];
+        }
+        return $newData;
+    }
+
+    /**
+     * Check and add the data to the cheapest Wholesaler
+     */
+    public function checkCheapestDataAndStore()
+    {
+        $venueData = $this->venueCollectionFactory->create()
+        ->addFieldToSelect('venue_records')
+        ->addFieldToSelect('product_id');
+
+        // Get all venues and find retailer and wholesalers
+        $venuesRetailerWholesaler = $this->getConfigValueDynamicRow();
+
+        foreach ($venueData as $data) {
+            $productId = $data->getData('product_id');
+            $venueRecords = json_decode($data->getData('venue_records'), true);
+            $productMSGPrice = $this->getProductAttributeValue($productId, 'price');
+            $cheapestWholesaler = null;
+            $lowestPrice = null;
+
+            if (is_array($venueRecords) && !empty($venueRecords)) {
+                foreach ($venueRecords as $venue => $price) {
+                    if (
+                        ($venuesRetailerWholesaler[$venue] ?? '') !== 'wholeseller' ||
+                        !is_numeric(str_replace('%', '', $price))
+                    ) {
+                        continue;
+                    }
+
+                    $price = (float) str_replace('%', '', $price);
+
+                    if ($lowestPrice === null || $price < $lowestPrice) {
+                        $lowestPrice = $price;
+                        $cheapestWholesaler = $venue;
+                    }
+                }
+
+                // Need to set condition here and save the data
+                if ($cheapestWholesaler != null) {
+                    if ($productMSGPrice < $lowestPrice) {
+                        $cheapestWholeseller = $this->cheapestWholesellerFactory->create()->loadByProductId($productId);
+                        if (!$cheapestWholeseller->getId()) {
+                            $cheapestWholeseller->setProductId($productId);
+                            $cheapestWholeseller->setIsMailSend(0);
+                            $cheapestWholeseller->setNotifyCount(0);
+                            $cheapestWholeseller->setMailSentAt(null);
+                            $cheapestWholeseller->setLastNotifiedAt(null);
+                            $cheapestWholeseller->setLastNotifiedPrice(null);
+                            $cheapestWholeseller->setData('cheapest_wholesaler', $cheapestWholesaler);
+                            $cheapestWholeseller->save();
+                        } else {
+                            $cheapestWholeseller->setData('cheapest_wholesaler', $cheapestWholesaler);
+                            $cheapestWholeseller->save();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Check and remove the data to the cheapest Wholesaler
+     */
+    public function removeProductIfPriceChanged()
+    {
+        // Get all venues and find retailer and wholesalers
+        $venuesRetailerWholesaler = $this->getConfigValueDynamicRow();
+        $cheapestWholesaleCollection = $this->cheapestCollectionFactory->create()->addFieldToSelect('product_id');
+        // echo '<pre>';print_r($cheapestWholesaleCollection->getData());
+        $prodIds = [];
+        foreach ($cheapestWholesaleCollection as $prod) {
+            $prodIds[] = $prod['product_id'];
+        }
+        
+        $venueData = $this->venueCollectionFactory->create()
+        ->addFieldToSelect('venue_records')
+        ->addFieldToSelect('product_id')
+        ->addFieldToFilter('product_id', ['in' => $prodIds]);
+        
+        foreach ($venueData as $data) {
+            $productId = $data->getData('product_id');
+            $venueRecords = json_decode($data->getData('venue_records'), true);
+            $productMSGPrice = (float)$this->getProductAttributeValue($productId, 'price');
+            $cheapestWholesaler = null;
+            $lowestPrice = null;
+
+            if (is_array($venueRecords) && !empty($venueRecords)) {
+                foreach ($venueRecords as $venue => $price) {
+                    if (
+                        ($venuesRetailerWholesaler[$venue] ?? '') !== 'wholeseller' ||
+                        !is_numeric(str_replace('%', '', $price))
+                    ) {
+                        continue;
+                    }
+
+                    $price = (float) str_replace('%', '', $price);
+
+                    if ($lowestPrice === null || $price < $lowestPrice) {
+                        $lowestPrice = $price;
+                        $cheapestWholesaler = $venue;
+                    }
+                }
+            }
+            if ($productMSGPrice > $lowestPrice) {
+                $this->cheapestWholesellerFactory->create()->loadByProductId($productId)->delete();
+            }
+        }
+    }
+
+    /**
+     * Get product decimal attribute value.
+     *
+     * @param int $productId
+     * @param string $attributeCode
+     * @return string|null
+     */
+    public function getProductAttributeValue($productId, $attributeCode)
+    {
+        $connection = $this->resourceConnection->getConnection();
+
+        $attributeTable = $this->resourceConnection->getTableName(
+            'catalog_product_entity_decimal'
+        );
+
+        $select = $connection->select()
+            ->from($attributeTable, ['value'])
+            ->where('entity_id = ?', $productId)
+            ->where(
+                'attribute_id = ?',
+                $this->getProductAttributeId($attributeCode)
+            )
+            ->limit(1);
+        
+        return $connection->fetchOne($select);
+    }
+
+    /**
+     * Get product attribute ID.
+     *
+     * @param string $attributeCode
+     * @return int|null
+     */
+    public function getProductAttributeId($attributeCode)
+    {
+        $connection = $this->resourceConnection->getConnection();
+
+        $attributeTable = $this->resourceConnection->getTableName(
+            'eav_attribute'
+        );
+
+        $select = $connection->select()
+            ->from($attributeTable, ['attribute_id'])
+            ->where('attribute_code = ?', $attributeCode)
+            ->where('entity_type_id = ?', 4)
+            ->limit(1);
+
+        return $connection->fetchOne($select) ?: null;
+    }
+}

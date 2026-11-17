@@ -1,0 +1,29 @@
+<?php
+namespace Ueg\VenueNotification\Cron;
+
+use Ueg\VenueNotification\Helper\Data;
+
+class WholesalerNotification
+{
+    /**
+     * @var Data
+     */
+    protected $data;
+
+    /**
+     * Constructor to define params
+     *
+     * @param Data $data
+     */
+    public function __construct(
+        Data $data
+    ) {
+        $this->data = $data;
+    }
+
+    public function execute()
+    {
+        $this->data->checkCheapestDataAndStore();
+        $this->data->removeProductIfPriceChanged();
+    }
+}

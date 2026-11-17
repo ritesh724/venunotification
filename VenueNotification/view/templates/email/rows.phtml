@@ -1,0 +1,15 @@
+<?php
+/** @var \Magento\Framework\View\Element\Template $block */
+/** @var array $alerts */
+$alerts = $block->getData('alerts') ?: [];
+?>
+<?php foreach ($alerts as $a): ?>
+    <tr>
+        <td><?= (int)$a['product_id'] ?></td>
+        <td><?= $a['type'] === 'wholesaler' ? 'Wholesaler' : 'Retailer' ?></td>
+        <td><?= $block->escapeHtml($a['venue']) ?></td>
+        <td>$<?= number_format($a['cheapest'], 2) ?></td>
+        <td>$<?= number_format($a['msg_price'], 2) ?></td>
+        <td><?= $block->escapeHtml($a['threshold']) ?></td>
+    </tr>
+<?php endforeach; ?>

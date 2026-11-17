@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
+    <group id="default">
+        <job name="ueg_venue_notification" instance="Ueg\VenueNotification\Cron\WholesalerNotification" method="execute">
+            <!-- every 6 hours: 00:30, 06:30, 12:30, 18:30 -->
+            <schedule>30 */6 * * *</schedule>
+        </job>
+    </group>
+</config>

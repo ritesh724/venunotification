@@ -1,0 +1,35 @@
+<!--@subject {{trans "Venue Notification Alert (%alert_count items)" alert_count=$alert_count}} @-->
+<!--@vars
+{
+ "var alert_count":"Total Alerts",
+ "var alerts":"Alert Rows"
+}
+@-->
+
+<h2 style="color:#333;font-family:Arial,sans-serif;">Venue Price Alerts</h2>
+<p style="font-family:Arial,sans-serif;">
+    You have <strong>{{var alert_count}}</strong> active alert(s) where your MSG price is out of range.
+</p>
+
+<table border="1" cellpadding="8" cellspacing="0"
+       style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;font-size:12px;">
+    <thead>
+        <tr style="background:#f5f5f5;">
+            <th>Product ID</th>
+            <th>Type</th>
+            <th>Cheapest Venue</th>
+            <th>Cheapest Price</th>
+            <th>MSG Price</th>
+            <th>Threshold</th>
+        </tr>
+    </thead>
+    <tbody>
+    {{block class="Magento\Framework\View\Element\Template"
+            template="Ueg_VenueNotification::email/rows.phtml"
+            alerts=$alerts}}
+    </tbody>
+</table>
+
+<p style="font-size:11px;color:#888;font-family:Arial,sans-serif;">
+    This is an automated message from your Venue Notification system.
+</p>

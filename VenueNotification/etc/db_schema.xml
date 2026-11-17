@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <table name="ueg_cheapest_wholeseller" resource="default" engine="innodb"
+           comment="Cheapest Wholeseller &amp; Retailer Notification">
+        <column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Product ID"/>
+        <column xsi:type="varchar" name="notify_type" length="20" nullable="false" default="wholesaler"
+                comment="Notification Type: wholesaler | retailer"/>
+        <column xsi:type="varchar" name="cheapest_wholesaler" length="50" nullable="true"
+                comment="Cheapest Wholesaler Name"/>
+        <column xsi:type="varchar" name="cheapest_retailer" length="50" nullable="true"
+                comment="Cheapest Retailer Name"/>
+        <column xsi:type="varchar" name="cheapest_price" length="15" nullable="true"
+                comment="Cheapest Price Value"/>
+        <column xsi:type="varchar" name="msg_price" length="15" nullable="true"
+                comment="MSG Price at time of detection"/>
+        <column xsi:type="varchar" name="threshold_type" length="10" nullable="true"
+                comment="dollar | percentage"/>
+        <column xsi:type="varchar" name="threshold_value" length="10" nullable="true"
+                comment="Configured Threshold Value"/>
+        <column xsi:type="smallint" name="is_mail_send" unsigned="true" nullable="false" default="0"
+                comment="Is Mail Sent"/>
+        <column xsi:type="datetime" name="mail_sent_at" nullable="true" comment="Mail Sent At"/>
+        <column xsi:type="int" name="notify_count" unsigned="true" nullable="false" default="0"
+                comment="Notification Count"/>
+        <column xsi:type="datetime" name="last_notified_at" nullable="true" comment="Last Notified At"/>
+        <column xsi:type="varchar" name="last_notified_price" length="15" nullable="true"
+                comment="Last Notified Price"/>
+        <column xsi:type="datetime" name="dismissed_until" nullable="true"
+                comment="Suppress notifications until this date"/>
+        <column xsi:type="smallint" name="is_active" unsigned="true" nullable="false" default="1"
+                comment="1 = active alert, 0 = resolved"/>
+        <column xsi:type="datetime" name="created_at" nullable="true" comment="Created At"/>
+        <column xsi:type="datetime" name="updated_at" nullable="true" comment="Updated At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="UEG_CHEAPEST_WHOLESELLER_PRODUCT_TYPE">
+            <column name="product_id"/>
+            <column name="notify_type"/>
+        </constraint>
+        <index referenceId="UEG_CHEAPEST_WHOLESELLER_PRODUCT_ID">
+            <column name="product_id"/>
+        </index>
+        <index referenceId="UEG_CHEAPEST_WHOLESELLER_IS_MAIL_SEND">
+            <column name="is_mail_send"/>
+        </index>
+    </table>
+</schema>

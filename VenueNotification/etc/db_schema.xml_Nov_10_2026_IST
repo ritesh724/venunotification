@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<schema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Setup/Declaration/Schema/etc/schema.xsd">
+
+    <table name="ueg_cheapest_wholeseller" resource="default" engine="innodb" comment="Cheapest Wholeseller Notification">
+		<column xsi:type="int" name="id" unsigned="true" nullable="false" identity="true" comment="ID"/>
+        <column xsi:type="int" name="product_id" unsigned="true" nullable="false" comment="Venue Record Product ID"/>
+        <column xsi:type="smallint" name="is_mail_send" unsigned="true" nullable="false" default="0" comment="Is Mail Sent"/>
+        <column xsi:type="datetime" name="mail_sent_at" nullable="true" comment="Mail Sent At"/>
+        <column xsi:type="int" name="notify_count" unsigned="true" nullable="false" default="0" comment="Notification Count"/>
+        <column xsi:type="datetime" name="last_notified_at" nullable="true" comment="Last Notified At"/>
+        <column xsi:type="varchar" name="last_notified_price" length="10" nullable="true" comment="Last Notified Price"/>
+        <column xsi:type="varchar" name="cheapest_wholesaler" length="50" comment="Cheapest Wholesaler"/>
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="id"/>
+        </constraint>
+    </table>
+</schema>
